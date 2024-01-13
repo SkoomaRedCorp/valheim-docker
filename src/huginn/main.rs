@@ -21,8 +21,9 @@ async fn main() {
   // Routes
   let root = warp::path::end().map(routes::invoke);
   let status = warp::path!("status").map(routes::status::invoke);
+  let info = warp::path!("info").map(routes::info::invoke);
   let metrics = warp::path!("metrics").map(routes::metrics::invoke);
-  let routes = warp::any().and(root.or(status).or(metrics));
+  let routes = warp::any().and(root.or(status).or(metrics).or(info));
 
   // HTTP Server
   let http_port: u16 = fetch_var("HTTP_PORT", "3000").parse().unwrap();

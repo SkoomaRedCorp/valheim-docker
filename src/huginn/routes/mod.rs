@@ -1,5 +1,6 @@
 use crate::fetch_info;
 
+pub(crate) mod info;
 pub(crate) mod metrics;
 pub(crate) mod status;
 

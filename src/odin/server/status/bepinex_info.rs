@@ -9,10 +9,10 @@ pub struct BepInExInfo {
 
 impl BepInExInfo {
   pub(crate) fn new() -> BepInExInfo {
-    let env = BepInExEnvironment::new();
+    let env: BepInExEnvironment = BepInExEnvironment::new();
     BepInExInfo {
       enabled: env.is_installed(),
-      mods: env.list_mods(),
+      mods: env.retrive_mod_manifest_info(),
     }
   }
   pub fn disabled() -> BepInExInfo {

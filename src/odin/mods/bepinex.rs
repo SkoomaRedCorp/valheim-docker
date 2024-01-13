@@ -4,6 +4,10 @@ use std::process::{Child, Command};
 use log::{debug, info};
 use serde::{Deserialize, Serialize};
 
+use serde_json::Value;
+use std::fs::File;
+use std::io::Read;
+
 use crate::constants;
 use crate::utils::common_paths::{bepinex_directory, bepinex_plugin_directory, game_directory};
 use crate::utils::{environment, path_exists};
@@ -29,6 +33,20 @@ fn parse_path(env_var: &str, default: String, alt: String) -> String {
 pub struct ModInfo {
   pub(crate) name: String,
   location: String,
+  version: String,
+  dependency_string: String,
+  website_url: String,
+  description: String,
+  dependencies: Vec<String>,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+struct PluginManifest {
+  name: String,
+  version_number: String,
+  website_url: String,
+  description: String,
+  dependencies: Vec<String>,
 }
 
 #[derive(Debug)]
@@ -94,7 +112,7 @@ impl BepInExEnvironment {
   }
   pub fn is_installed(&self) -> bool {
     debug!("Checking for BepInEx specific files...");
-    let checks = &[
+    let checks: &[&String; 2] = &[
       // &self.doorstop_corlib_override_path,
       &self.dyld_insert_libraries,
       // &self.dyld_library_path,
@@ -110,21 +128,51 @@ impl BepInExEnvironment {
     output
   }
 
-  pub fn list_mods(&self) -> Vec<ModInfo> {
+  pub fn retrive_mod_manifest_info(&self) -> Vec<ModInfo> {
     if self.is_installed() {
-      glob::glob(&format!("{}/**/*.dll", bepinex_plugin_directory()))
+      glob::glob(&format!("{}/**/manifest.json", bepinex_plugin_directory()))
         .unwrap()
-        .map(|file| {
-          let found_file = file.unwrap();
-          let location = found_file.as_path().to_str().unwrap().to_string();
-          let name = found_file
+        .filter_map(|file| {
+          let found_file = file.ok()?;
+
+          let parent_folder_name = found_file
             .as_path()
-            .file_name()
-            .unwrap()
-            .to_str()
-            .unwrap()
+            .parent()?
+            .file_name()?
+            .to_str()?
             .to_string();
-          ModInfo { name, location }
+
+          let split_result: Vec<&str> = parent_folder_name.split('-').collect();
+
+          let author_name = split_result[0];
+
+          let location = found_file.as_path().to_str()?.to_string();
+
+          // Rest of the code
+          let mut file = File::open(&location).ok()?;
+          let mut contents = String::new();
+          file.read_to_string(&mut contents).ok()?;
+
+          // Parse the JSON content
+          let data: Value = serde_json::from_str(&contents).ok()?;
+          let manifest: PluginManifest = serde_json::from_value(data).ok()?;
+
+          // Access the properties of the JSON object
+          let plugin_name: String = manifest.name;
+          let plugin_version: String = manifest.version_number;
+          let plugin_website: String = manifest.website_url;
+          let plugin_description: String = manifest.description;
+          let plugin_dependencies: Vec<String> = manifest.dependencies;
+
+          Some(ModInfo {
+            name: plugin_name.clone(),
+            description: plugin_description.clone(),
+            website_url: plugin_website,
+            location,
+            version: plugin_version.clone(),
+            dependency_string: format!("{}-{}-{}", author_name, plugin_name, plugin_version),
+            dependencies: plugin_dependencies,
+          })
         })
         .collect()
     } else {
