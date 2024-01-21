@@ -2,6 +2,7 @@ mod routes;
 
 use log::info;
 use odin::{logger::initialize_logger, server::ServerInfo, utils::environment::fetch_var};
+use std::fmt;
 use std::net::SocketAddrV4;
 use std::str::FromStr;
 use warp::Filter;
@@ -10,6 +11,29 @@ fn fetch_info() -> ServerInfo {
   let port: u16 = fetch_var("PORT", "2457").parse().unwrap();
   let address = fetch_var("ADDRESS", format!("127.0.0.1:{}", port + 1).as_str());
   ServerInfo::from(SocketAddrV4::from_str(&address).unwrap())
+}
+
+use warp::reject::Reject;
+
+#[derive(Debug)]
+struct IoErrorRejection(std::io::Error);
+
+impl fmt::Display for IoErrorRejection {
+  fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+    write!(f, "IO error: {}", self.0)
+  }
+}
+
+impl Reject for IoErrorRejection {}
+
+async fn handle_info_request() -> Result<impl warp::Reply, warp::Rejection> {
+  // Load and serve the index.html file
+  let file_content = match tokio::fs::read_to_string("./pages/index.html").await {
+    Ok(content) => content,
+    Err(err) => return Err(warp::reject::custom(IoErrorRejection(err))),
+  };
+
+  Ok(warp::reply::html(file_content))
 }
 
 #[tokio::main]
@@ -21,9 +45,10 @@ async fn main() {
   // Routes
   let root = warp::path::end().map(routes::invoke);
   let status = warp::path!("status").map(routes::status::invoke);
-  let info = warp::path!("info").map(routes::info::invoke);
+  let info_static = warp::path!("info" / "static" / ..).and(warp::fs::dir("./pages")); // Adjust the path accordingly
+  let info = warp::path!("info").and_then(handle_info_request);
   let metrics = warp::path!("metrics").map(routes::metrics::invoke);
-  let routes = warp::any().and(root.or(status).or(metrics).or(info));
+  let routes = root.or(status).or(metrics).or(info_static).or(info);
 
   // HTTP Server
   let http_port: u16 = fetch_var("HTTP_PORT", "3000").parse().unwrap();

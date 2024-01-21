@@ -2,7 +2,7 @@
 # -- Odin Builder -- #
 # ------------------ #
 ARG ODIN_IMAGE_VERSION=latest
-FROM --platform=linux/amd64 mbround18/odin:${ODIN_IMAGE_VERSION} as runtime
+FROM --platform=linux/amd64 beeheim-odin:${ODIN_IMAGE_VERSION} AS runtime
 
 # --------------- #
 # -- Steam CMD -- #
@@ -10,7 +10,7 @@ FROM --platform=linux/amd64 mbround18/odin:${ODIN_IMAGE_VERSION} as runtime
 FROM steamcmd/steamcmd:ubuntu
 
 ENV TZ=America/Los_Angeles
-RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
+RUN ln -snf /usr/share/zoneinfo/${TZ} /etc/localtime && echo ${TZ} > /etc/timezone
 
 RUN apt-get update                        \
     && apt-get upgrade -y                 \

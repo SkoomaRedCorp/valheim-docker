@@ -29,7 +29,8 @@
   // Use 'forwardPorts' to make a list of ports inside the container available locally.
   "forwardPorts": [
       2456,
-      2458
+      2458,
+      3000
   ],
   // Use 'postCreateCommand' to run commands after the container is created.
   "postCreateCommand": "cargo install cargo-make && sudo chown -R root:root .&& sudo chmod ug+rwx /var/run/docker.sock",
