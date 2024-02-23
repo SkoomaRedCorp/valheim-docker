@@ -2,7 +2,7 @@
 # -- Odin Builder -- #
 # ------------------ #
 ARG ODIN_IMAGE_VERSION=latest
-FROM --platform=linux/amd64 beeheim-odin:${ODIN_IMAGE_VERSION} AS runtime
+FROM --platform=linux/amd64 beeheim.azurecr.io/odin:${ODIN_IMAGE_VERSION} AS runtime
 
 # --------------- #
 # -- Steam CMD -- #
